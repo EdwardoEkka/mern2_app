@@ -4,14 +4,14 @@ let dbConnection;
 
 module.exports = {
   connectToDb: (cb) => {
-    mongoose.connect('mongodb+srv://vishalekka18:Edward123@cluster0.ezcpyyy.mongodb.net/Confessions?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true })
+    mongoose.connect('mongodb+srv://vishalekka18:Edward123@cluster0.ezcpyyy.mongodb.net/chat?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true })
       .then(() => {
         dbConnection = mongoose.connection;
-        return cb(null); // Pass null when there's no error
+        return cb(null); 
       })
       .catch((err) => {
-        console.error(err); // Log the error
-        return cb(err); // Pass the error to the callback
+        console.error(err);
+        return cb(err); 
       });
   },
   getDb: () => dbConnection,

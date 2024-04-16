@@ -1,17 +1,18 @@
 const express = require('express');
 const { connectToDb, getDb } = require('./db');
 const cors = require('cors');
-const { ObjectId } = require('mongodb');
+const bodyParser = require('body-parser');
+const http = require('http');
+const socketIo = require('socket.io');
 
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(__dirname + '/public'));
+app.use(bodyParser.json());
 app.use(cors());
-
-let db;
 
 connectToDb((err) => {
   if (err) {
@@ -20,49 +21,35 @@ connectToDb((err) => {
   }
   console.log('Connected successfully to the database');
 
-  app.listen(port, () => {
-    console.log(`App listening on port ${port}`);
+
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+
+  socket.on('disconnect', () => {
+      console.log('User disconnected');
   });
 
-  db = getDb();
+  socket.on('chat message', (msg) => {
+      try {
+      io.emit('chat message', msg); // Emitting the JSON string back to all clients
+    } catch (error) {
+      console.error('Error parsing message:', error);
+    }
+  });
 });
 
-app.post('/add', async (req, res) => {
-  try {
-    if (!db) {
-      return res.status(500).send('Database not connected');
-    }
 
-    const text = req.body;
+app.use('/', require('./router/routes'));
 
-    const result = await db.collection('data').insertOne(text);
-    
-    res.status(200).send('Data added successfully');
-  } catch (error) {
-    console.error('Error occurred while inserting data:', error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-app.get('/get', async (req, res) => {
-  try {
-    if (!db) {
-      return res.status(500).send('Database not connected');
-    }
-
-    const results = await db.collection('data').find().toArray();
-
-    if (!results || results.length === 0) {
-      return res.status(404).send('No data found');
-    }
-
-    const textData = results.map((result) => result.text);
-    console.log(textData);
-    res.status(200).json({ textData });
-  } catch (error) {
-    console.error('Error occurred while retrieving data:', error);
-    res.status(500).send('Internal server error');
-  }
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });
 
 module.exports = app;
